@@ -60,6 +60,15 @@ def get_components_Preparation(g, p):
     comps.extend(flav for flav in flavs if flav not in comps)
     return comps
 
+# Finish
+def get_Techniques_Finish(g, f):
+    techs = [k for k in g[f] if g[f][k]['edgetype'] == 'tecnica']
+    return clean_list(clean_technique, techs)
+
+def get_Ingredients_Finish(g, f):
+    ingrs = [k for k in g[f] if g[f][k]['edgetype'] == 'composicion']
+    return clean_list(clean_ingredient, ingrs)
+
 # Style
 def get_StyleFamily_Style(g, s):
     return [k for k in g[s] if g[s][k]['edgetype'] == 'se clasifica']
@@ -69,10 +78,13 @@ def get_TechniqueRFamily_TechniqueR(g, t):
     return [k for k in g[t] if g[t][k]['edgetype'] == 'se clasifica']
 
 # Recipe
+def get_Finish_Recipe(g, r):
+    return [k for k in g[r] if g[r][k]['edgetype'] == 'acabacion']
+
 def get_TechniquesR_Recipe(g, r):
     return [k for k in g[r] if g[r][k]['edgetype'] == 'Tecnica']
 
-def get_TechniqueRFamilies_Recipe(g, r):
+def get_TechniquesRFamilies_Recipe(g, r):
     techs = get_TechniquesR_Recipe(g, r)
     return [k for t in techs for k in get_Technique_Family(g, t)]
 
@@ -88,7 +100,7 @@ def get_Temperature_Recipe(g, r):
 def get_Styles_Recipe(g, r):
     return [k for k in g[r] if g[r][k]['edgetype'] == 'estilo']
 
-def get_StyleFamilies_Recipe(g, r):
+def get_StylesFamilies_Recipe(g, r):
     styles = get_Styles_Recipe(g, r)
     return [k for s in styles for k in get_StyleFamily_Style(g, s)]
 
@@ -99,45 +111,39 @@ def get_Worlds_Recipe(g, r):
     preps = get_Preparations_Recipe(g, r)
     return [k for p in preps for k in get_World_Preparation(g, p)]
 
-def get_Ingredients_Recipe(g, r):
-    preps = get_Preparations_Recipe(g, r)
-    return [k for p in preps for k in get_Ingredients_Preparation(g, p)]
-
 def get_Techniques_Recipe(g, r):
     preps = get_Preparations_Recipe(g, r)
-    return [k for p in preps for k in get_Techniques_Preparation(g, p)]
+    preps_techs = [k for p in preps for k in get_Techniques_Preparation(g, p)]
+    finish = get_Finish_Recipe(g, r)
+    finish_techs = [k for f in finish for k in get_Techniques_Finish(g, f)]
+    return preps_techs + finish_techs
 
-def get_Flavors_Recipe(g, r):
-    preps = get_Preparations_Recipe(g, r)
-    return [k for p in preps for k in get_Flavors_Preparation(g, p)]
-
-def get_Products_Recipe(g, r):
-    preps = get_Preparations_Recipe(g, r)
-    return [k for p in preps for k in get_Products_Preparation(g, p)]
-
-def get_PreparationFamilies_Recipe(g, r):
+def get_PreparationsFamilies_Recipe(g, r):
     preps = get_Preparations_Recipe(g, r)
     return [k for p in preps for k in get_PreparationFamily_Preparation(g, p)]
 
 def get_components_Recipe(g, r):
     preps = get_Preparations_Recipe(g, r)
-    return [k for p in preps for k in get_components_Preparation(g, p)]
+    preps_comps = [k for p in preps for k in get_components_Preparation(g, p)]
+    finish = get_Finish_Recipe(g, r)
+    finish_ingrs = [k for f in finish for k in get_Ingredients_Finish(g, f)]
+    return preps_comps + finish_ingrs
 
 
 # In[3]:
 
 
 def INGREDIENTS(g1, g2, r):
-    ingrs1 = get_components_Recipe(g1, r)
-    ingrs2 = get_components_Recipe(g2, r)
+    ingrs1 = map(str.lower, get_components_Recipe(g1, r))
+    ingrs2 = map(str.lower, get_components_Recipe(g2, r))
     ingrs = []
     ingrs.extend(ingr for ingr in ingrs1 if ingr not in ingrs)
     ingrs.extend(ingr for ingr in ingrs2 if ingr not in ingrs)
     return ingrs
 
 def TECHNIQUES(g1, g2, r):
-    techs1 = get_Techniques_Recipe(g1, r)
-    techs2 = get_Techniques_Recipe(g2, r)
+    techs1 = map(str.lower, get_Techniques_Recipe(g1, r))
+    techs2 = map(str.lower, get_Techniques_Recipe(g2, r))
     techs = []
     techs.extend(tech for tech in techs1 if tech not in techs)
     techs.extend(tech for tech in techs2 if tech not in techs)
@@ -147,113 +153,24 @@ def TECHNIQUES(g1, g2, r):
 # In[4]:
 
 
-def get_nodes_by_type(g, typ):
-    return [n for n, data in g.nodes_iter(data=True) if data['nodetype'] == typ]
-
-def get_recipes(g):
-    return get_nodes_by_type(g, 'Receta')
+def nodes_by_type(g, typ, data=False):
+    return [
+        (n, d) if data else n
+        for n, d in g.nodes_iter(data=True)
+        if d['nodetype'] == typ
+    ]
 
 def all_ingredients(g):
     ingrs = set()
-    for r in get_recipes(g):
+    for r in nodes_by_type(g, 'Receta'):
         ingrs = ingrs.union(get_components_Recipe(g, r))
     return ingrs
 
 def all_techniques(g):
     techs = set()
-    for r in get_recipes(g):
+    for r in nodes_by_type(g, 'Receta'):
         techs = techs.union(get_Techniques_Recipe(g, r))
     return techs
-
-
-# In[5]:
-
-
-import networkx as nx
-
-
-# In[6]:
-
-
-g_nlg = nx.read_gexf('out/elbulli_nlg.gexf')
-
-
-# In[7]:
-
-
-g_dat = nx.read_gexf('out/elbulli_dat.gexf')
-
-
-# In[8]:
-
-
-for g in [g_nlg, g_dat]:
-    for p in get_nodes_by_type(g, 'Elaboracion'):
-        assert(len(get_PreparationFamily_Preparation(g, p)) <= 1)
-        prods = get_Products_Preparation(g, p)
-        flavs = get_Flavors_Preparation(g, p)
-        ingrs = get_Ingredients_Preparation(g, p)
-        comps = get_components_Preparation(g, p)
-        assert(set(comps) == set(prods + flavs + ingrs))
-        get_Techniques_Preparation(g, p)
-        assert(len(get_World_Preparation(g, p)) <= 1)
-
-
-# In[9]:
-
-
-for g in [g_nlg, g_dat]:
-    for s in get_nodes_by_type(g, 'Estilo'):
-        assert(len(get_StyleFamily_Style(g, s)) == 1)
-
-
-# In[10]:
-
-
-for g in [g_nlg, g_dat]:
-    for t in get_nodes_by_type(g, 'Tecnica'):
-        assert(len(get_TechniqueRFamily_TechniqueR(g, t)) == 1)
-
-
-# In[11]:
-
-
-for g in [g_nlg, g_dat]:
-    for r in get_nodes_by_type(g, 'Receta'):
-        techsR = get_TechniquesR_Recipe(g, r)
-        techsF = get_TechniqueRFamilies_Recipe(g, r)
-        assert(len(techsR) == len(techsF))
-        assert(len(get_RecipeFamily_Recipe(g, r)) == 1)
-        assert(len(get_Year_Recipe(g, r)) == 1)
-        assert(len(get_Temperature_Recipe(g, r)) == 1)
-        stylesR = get_Styles_Recipe(g, r)
-        stylesF = get_StyleFamilies_Recipe(g, r)
-        assert(len(stylesR) == len(stylesF))
-        preps = get_Preparations_Recipe(g, r)
-        worlds = get_Worlds_Recipe(g, r)
-        assert(len(worlds) <= len(preps))
-        ingrs = get_Ingredients_Recipe(g, r)
-        flavs = get_Flavors_Recipe(g, r)
-        prods = get_Products_Recipe(g, r)
-        comps = get_components_Recipe(g, r)
-        assert(set(comps) == set(prods + flavs + ingrs))
-        get_Techniques_Recipe(g, r)
-        fams = get_PreparationFamilies_Recipe(g, r)
-        assert(len(fams) <= len(preps))
-
-
-# In[12]:
-
-
-for r in get_nodes_by_type(g_dat, 'Receta'):
-    s11 = set(INGREDIENTS(g_dat, g_nlg, r))
-    s12 = set(INGREDIENTS(g_nlg, g_dat, r))
-    s13 = set(get_components_Recipe(g_dat, r)).union(get_components_Recipe(g_nlg, r))
-    assert(s11 == s12 == s13)
-    s21 = set(TECHNIQUES(g_dat, g_nlg, r))
-    s22 = set(TECHNIQUES(g_nlg, g_dat, r))
-    s23 = set(get_Techniques_Recipe(g_dat, r)).union(get_Techniques_Recipe(g_nlg, r))
-    assert(s21 == s22 == s23)
 
 
 # In[ ]:
