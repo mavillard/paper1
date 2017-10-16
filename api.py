@@ -82,11 +82,11 @@ def get_Finish_Recipe(g, r):
     return [k for k in g[r] if g[r][k]['edgetype'] == 'acabacion']
 
 def get_TechniquesR_Recipe(g, r):
-    return [k for k in g[r] if g[r][k]['edgetype'] == 'Tecnica']
+    return [k for k in g[r] if g[r][k]['edgetype'] == 'tecnica']
 
 def get_TechniquesRFamilies_Recipe(g, r):
     techs = get_TechniquesR_Recipe(g, r)
-    return [k for t in techs for k in get_Technique_Family(g, t)]
+    return [k for t in techs for k in get_TechniqueRFamily_TechniqueR(g, t)]
 
 def get_RecipeFamily_Recipe(g, r):
     return [k for k in g[r] if g[r][k]['edgetype'] == 'se clasifica']
